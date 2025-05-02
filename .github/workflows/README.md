@@ -85,9 +85,8 @@ jobs:
 .github/
 └── workflows/
     ├── sync-to-gitlab.yml   # This workflow
+    ├── README.md            # This documentation
     └── ...other workflows
-docs/
-└── gitlab-sync.md           # This documentation
 ```
 
 ## 🔍 Monitoring
