@@ -1,4 +1,3 @@
-```markdown
 # AWS S3 Optimization (IaC Pipeline)
 
 ## Workflow Architecture
