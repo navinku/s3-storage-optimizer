@@ -1,100 +1,150 @@
-# AWS S3 Optimization (IaC Pipeline)
+# AWS S3 Storage Optimization with Pulumi Python
 
-## Workflow Architecture
+## Project Overview
+
+![S3 Lifecycle Diagram](./docs/s3-lifecycle-diagram.png)
+
+This repository contains Pulumi infrastructure as code (Python) for optimizing AWS S3 storage costs through automated lifecycle policies and cost monitoring.
+
+## Key Features
+
+- **Multi-Tier Storage Architecture**
+  - Standard tier for newly uploaded objects
+  - Standard-Infrequent Access (IA) tier after 14 days
+  - Glacier Deep Archive for long-term retention
+  - Intelligent Tiering for unpredictable access patterns
+
+- **Automated Lifecycle Management**
+  - Time-based transitions between storage classes
+  - Configurable transition periods
+  - Expiration policies for object cleanup
+
+- **Cost Monitoring**
+  - Daily storage cost tracking
+  - Budget threshold alerts
+  - Storage analytics dashboard
+
+## Architecture Diagram
+
 ```mermaid
-graph TB
-    GH[GitHub Repo] -- Sync via GitHub Action --> GL[GitLab Mirror]
-    GL -- Manual Trigger --> Pipeline
-    Pipeline --> Terraform[Terraform Apply]
-    Pipeline --> Pulumi[Pulumi Up]
-    Terraform & Pulumi --> AWS[AWS Resources]
+graph LR
+    A[New Uploads] --> B[S3 Standard]
+    B -->|After 14 days| C[S3 Standard-IA]
+    C -->|After 90 days| D[Glacier Deep Archive]
+    E[Intelligent Tiering] --> B
+    E --> C
+    F[Lifecycle Manager] --> B
+    F --> C
+    F --> D
+    G[Cost Monitor] --> H[Budget Alerts]
 ```
 
-## Key Components
+## Prerequisites
 
-### 1. GitHub → GitLab Sync (Automated)
-- Synchronizes all pushes from GitHub to GitLab
-- Configured via GitHub Actions
-- Required for audit trail and backup
-
-### 2. GitLab CI/CD (Manual Trigger)
-```yaml
-# .gitlab-ci.yml example
-deploy:
-  stage: deploy
-  rules:
-    - when: manual
-  script:
-    - if [ "$IAC_TOOL" == "terraform" ]; then
-        terraform apply -auto-approve;
-      elif [ "$IAC_TOOL" == "pulumi" ]; then
-        pulumi up -yes;
-      fi
-```
+- Python 3.7+
+- Pulumi CLI installed
+- AWS credentials configured
+- Pulumi stack configured
 
 ## Repository Structure
-```
-├── .github/
-│   └── workflows/
-│       └── sync-to-gitlab.yml  # GitHub Action
-├── .gitlab-ci.yml              # Pipeline config
-├── terraform/                  # Terraform modules
-│   ├── s3/
-│   ├── cloudfront/
-│   └── variables.tf
-├── pulumi/                     # Pulumi stacks
-│   ├── S3Optimization/
-│   └── Pulumi.dev.yaml
-└── docs/
-    ├── SETUP.md               # Sync configuration
-    └── DEPLOYMENT_GUIDE.md    # Manual steps
-```
 
-## Setup Instructions
-
-### GitHub Action Configuration
-```yaml
-# .github/workflows/sync-to-gitlab.yml
-name: Mirror to GitLab
-on: [push]
-jobs:
-  mirror:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          git remote add gitlab https://gitlab.com/$GITLAB_PROJECT_PATH.git
-          git push --mirror gitlab
-        env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+```
+├── __main__.py            # Main Pulumi infrastructure
+├── requirements.txt       # Python dependencies
+├── Pulumi.yaml           # Pulumi project config
+├── Pulumi.<stack>.yaml   # Environment config
+├── docs/
+│   ├── s3-lifecycle-diagram.png  
+│   └── s3-lifecycle.dot          
+├── modules/
+│   ├── storage/          # S3 bucket configuration
+│   │   ├── bucket.py     # Bucket definition
+│   │   ├── lifecycle.py  # Transition policies
+│   │   └── iam.py        # Access policies
+│   └── monitoring/       # Cost tracking
+└── scripts/              # Helper scripts
 ```
 
-### Access Requirements
-- GitHub Repo: `write` permissions
-- GitLab Project: `maintainer` role
-- AWS: Deployment credentials in GitLab CI variables
+## Configuration
 
-## Deployment Process
-1. Code changes pushed to GitHub (main branch)
-2. GitHub Action mirrors to GitLab (automatically)
-3. Engineer manually triggers GitLab pipeline:
-   ```bash
-   # Via GitLab UI or API:
-   curl --request POST \
-     --header "PRIVATE-TOKEN: <your_access_token>" \
-     "https://gitlab.com/api/v4/projects/:id/pipeline"
-   ```
-4. Pipeline executes selected IaC tool (Terraform/Pulumi)
+Set lifecycle transition days in your Pulumi config:
 
-## Security Notes
-- All secrets stored in GitLab CI variables
-- GitHub Action uses minimal-scope token
-- Pipeline requires manual approval
+```bash
+pulumi config set storage:standard_ia_days 14
+pulumi config set storage:glacier_days 90
+pulumi config set monitoring:budget_threshold 100
 ```
 
-Key features:-
-1. Clear visual workflow diagram
-2. Minimalist technical documentation
-3. Ready-to-use code snippets
-4. Emphasis on security practices
-5. Explicit manual trigger requirement
+## Implementation Details
+
+### Storage Module (`modules/storage`)
+- `bucket.py`: Creates S3 bucket with versioning and logging
+- `lifecycle.py`: Implements transition rules:
+  ```python
+  lifecycle_rules=[
+      {
+          "enabled": True,
+          "transitions": [
+              {
+                  "days": config.standard_ia_days,
+                  "storage_class": "STANDARD_IA"
+              },
+              {
+                  "days": config.glacier_days,
+                  "storage_class": "GLACIER"
+              }
+          ]
+      }
+  ]
+  ```
+
+### Monitoring Module (`modules/monitoring`)
+- Tracks daily storage costs by class
+- SNS alerts when thresholds exceeded
+- Cost Explorer integration
+
+## Generating Diagrams
+
+To update the lifecycle diagram:
+
+```bash
+dot -Tpng docs/s3-lifecycle.dot -o docs/s3-lifecycle-diagram.png
+```
+
+Example `s3-lifecycle.dot`:
+```dot
+digraph lifecycle {
+    rankdir=LR;
+    node [shape=box];
+    
+    Uploads -> Standard [label="New Objects"];
+    Standard -> StandardIA [label="14 days"];
+    StandardIA -> Glacier [label="90 days"];
+    
+    Lifecycle -> Standard [label="Manages"];
+    Lifecycle -> StandardIA;
+    Lifecycle -> Glacier;
+    
+    Monitor -> Alerts [label="Triggers"];
+    Standard -> Monitor [label="Metrics"];
+    StandardIA -> Monitor;
+    Glacier -> Monitor;
+}
+```
+
+## Deployment
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Deploy infrastructure
+pulumi up
+```
+
+## Monitoring Access
+
+View storage metrics:
+```bash
+pulumi stack output dashboard_url
+```
