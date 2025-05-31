@@ -2,8 +2,6 @@
 
 ## Project Overview
 
-![S3 Lifecycle Diagram](./docs/s3-lifecycle-diagram.png)
-
 This repository contains Pulumi infrastructure as code (Python) for optimizing AWS S3 storage costs through automated lifecycle policies and cost monitoring.
 
 ## Key Features
