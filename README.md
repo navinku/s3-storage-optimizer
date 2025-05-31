@@ -92,7 +92,7 @@ jobs:
 - Pipeline requires manual approval
 ```
 
-Key features:
+Key features:-
 1. Clear visual workflow diagram
 2. Minimalist technical documentation
 3. Ready-to-use code snippets
