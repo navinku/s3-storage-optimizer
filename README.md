@@ -113,4 +113,3 @@ Common issues:
 ## License
 
 Apache 2.0
-```
