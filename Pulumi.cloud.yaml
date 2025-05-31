@@ -1,0 +1,7 @@
+encryptionsalt: v1:j8Tr1IBIffg=:v1:K6fDuvt206WWxaZm:J4Ud1Ebov1FvNC5UN/a51n1D0mIxIQ==
+config:
+  aws:region: us-east-2
+  s3-storage-optimizer:standard_ia_days: "30"
+  s3-storage-optimizer:glacier_days: "92"
+  s3-storage-optimizer:glacier_instant_days: "1"
+  s3-storage-optimizer:bucket_name: s3optimized-39462

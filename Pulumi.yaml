@@ -1,0 +1,11 @@
+name: s3-storage-optimizer
+description: This repository contains Pulumi infrastructure as code (Python) for optimizing AWS S3 storage costs through automated lifecycle policies and cost monitoring.
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-python

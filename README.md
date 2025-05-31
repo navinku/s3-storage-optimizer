@@ -1,148 +1,116 @@
-# AWS S3 Storage Optimization with Pulumi Python
+# AWS S3 Storage Optimization with Pulumi
 
-## Project Overview
+Automated lifecycle management for files in S3 with cost-optimized storage transitions.
 
-This repository contains Pulumi infrastructure as code (Python) for optimizing AWS S3 storage costs through automated lifecycle policies and cost monitoring.
+## Features
 
-## Key Features
+- **Automated Storage Tiering**:
+  - Immediate access to new uploads (STANDARD)
+  - Fast retrieval with Glacier Instant Retrieval after 1 day
+  - Cost-effective deep archival after 92 days
 
-- **Multi-Tier Storage Architecture**
-  - Standard tier for newly uploaded objects
-  - Standard-Infrequent Access (IA) tier after 14 days
-  - Glacier Deep Archive for long-term retention
-  - Intelligent Tiering for unpredictable access patterns
-
-- **Automated Lifecycle Management**
-  - Time-based transitions between storage classes
+- **Infrastructure as Code**:
+  - Pulumi Python implementation
   - Configurable transition periods
-  - Expiration policies for object cleanup
+  - Reproducible deployments
 
-- **Cost Monitoring**
-  - Daily storage cost tracking
-  - Budget threshold alerts
-  - Storage analytics dashboard
-
-## Architecture Diagram
+## Lifecycle Flow
 
 ```mermaid
 graph LR
-    A[New Uploads] --> B[S3 Standard]
-    B -->|After 14 days| C[S3 Standard-IA]
-    C -->|After 90 days| D[Glacier Deep Archive]
-    E[Intelligent Tiering] --> B
-    E --> C
-    F[Lifecycle Manager] --> B
-    F --> C
-    F --> D
-    G[Cost Monitor] --> H[Budget Alerts]
+    A[New Uploads] -->|STANDARD| B[Day 0]
+    B -->|GLACIER_IR| C[Day 1]
+    C -->|DEEP_ARCHIVE| D[Day 92]
 ```
 
 ## Prerequisites
 
 - Python 3.7+
-- Pulumi CLI installed
+- Pulumi CLI
 - AWS credentials configured
-- Pulumi stack configured
-
-## Repository Structure
-
-```
-├── __main__.py            # Main Pulumi infrastructure
-├── requirements.txt       # Python dependencies
-├── Pulumi.yaml           # Pulumi project config
-├── Pulumi.<stack>.yaml   # Environment config
-├── docs/
-│   ├── s3-lifecycle-diagram.png  
-│   └── s3-lifecycle.dot          
-├── modules/
-│   ├── storage/          # S3 bucket configuration
-│   │   ├── bucket.py     # Bucket definition
-│   │   ├── lifecycle.py  # Transition policies
-│   │   └── iam.py        # Access policies
-│   └── monitoring/       # Cost tracking
-└── scripts/              # Helper scripts
-```
+- Unique bucket name
 
 ## Configuration
 
-Set lifecycle transition days in your Pulumi config:
+Set required parameters:
 
 ```bash
-pulumi config set storage:standard_ia_days 14
-pulumi config set storage:glacier_days 90
-pulumi config set monitoring:budget_threshold 100
+pulumi config set bucket_name "your-unique-bucket-name"
+pulumi config set aws:region <your-region>
 ```
 
-## Implementation Details
-
-### Storage Module (`modules/storage`)
-- `bucket.py`: Creates S3 bucket with versioning and logging
-- `lifecycle.py`: Implements transition rules:
-  ```python
-  lifecycle_rules=[
-      {
-          "enabled": True,
-          "transitions": [
-              {
-                  "days": config.standard_ia_days,
-                  "storage_class": "STANDARD_IA"
-              },
-              {
-                  "days": config.glacier_days,
-                  "storage_class": "GLACIER"
-              }
-          ]
-      }
-  ]
-  ```
-
-### Monitoring Module (`modules/monitoring`)
-- Tracks daily storage costs by class
-- SNS alerts when thresholds exceeded
-- Cost Explorer integration
-
-## Generating Diagrams
-
-To update the lifecycle diagram:
+Optional customizations:
 
 ```bash
-dot -Tpng docs/s3-lifecycle.dot -o docs/s3-lifecycle-diagram.png
-```
-
-Example `s3-lifecycle.dot`:
-```dot
-digraph lifecycle {
-    rankdir=LR;
-    node [shape=box];
-    
-    Uploads -> Standard [label="New Objects"];
-    Standard -> StandardIA [label="14 days"];
-    StandardIA -> Glacier [label="90 days"];
-    
-    Lifecycle -> Standard [label="Manages"];
-    Lifecycle -> StandardIA;
-    Lifecycle -> Glacier;
-    
-    Monitor -> Alerts [label="Triggers"];
-    Standard -> Monitor [label="Metrics"];
-    StandardIA -> Monitor;
-    Glacier -> Monitor;
-}
+pulumi config set glacier_instant_days 1
+pulumi config set deep_archive_days 92
 ```
 
 ## Deployment
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+1. Initialize the project:
 
-# Deploy infrastructure
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Deploy the infrastructure:
+
+```bash
 pulumi up
 ```
 
-## Monitoring Access
+## Architecture
 
-View storage metrics:
+1. **Upload Phase**:
+   - Files uploaded to STANDARD storage class
+   - Immediate availability for processing
+
+2. **Fast Archive Phase** (Day 1):
+   - Transition to GLACIER_IR
+   - Millisecond retrieval times
+   - 40% cost reduction vs STANDARD
+
+3. **Deep Archive Phase** (Day 92):
+   - Transition to DEEP_ARCHIVE
+   - Hours retrieval time
+   - 95% cost reduction vs STANDARD
+
+## Cost Comparison
+
+| Storage Class | Transition Day | Cost (us-east-1) | Retrieval Time |
+|---------------|----------------|------------------|----------------|
+| STANDARD | 0 | $0.023/GB | Immediate |
+| GLACIER_IR | 1 | $0.004/GB | Milliseconds |
+| DEEP_ARCHIVE | 92 | $0.00099/GB | Hours |
+
+## Monitoring
+
+Access monitoring URLs after deployment:
+
 ```bash
-pulumi stack output dashboard_url
+pulumi stack output monitoring_dashboard_url
+```
+
+## Clean Up
+
+To destroy all resources:
+
+```bash
+pulumi destroy
+```
+
+## Troubleshooting
+
+Common issues:
+
+- **Bucket name not available**: Try a more unique name
+- **Transition errors**: Verify days are increasing sequentially
+- **Permission issues**: Check IAM credentials
+
+## License
+
+Apache 2.0
 ```
